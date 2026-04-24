@@ -7,6 +7,13 @@ RED="\e[31m"
 GREEN="\e[32m"
 NOCOLOR="\e[0m"
 
+LEAK_CMD="$(command -v leaks 2>/dev/null || true)"
+if [[ -n "$LEAK_CMD" ]]; then
+  LEAK_AVAILABLE=1
+else
+  LEAK_AVAILABLE=0
+fi
+
 
 if [ $# -lt 2 ]
 then
@@ -54,24 +61,31 @@ fi
 
 if [[ "$TLEFLAG" = "0" ]];
 then
-leaks -atExit -- $ROOT/push_swap $(cat ./trace_loop/test_case_$i.txt) > a 2>c
-cat a | grep ": 0 leaks for 0 total leaked bytes" > b
-if [[ -s b ]];
-then
-	TEMPLEAK="${GREEN}NO LEAKS${NOCOLOR}"
-else
-	if [[ -s c ]];
-	then
-		TEMPLEAK="leaks command not found	"
-		LEAKFLAG="leaks command not found	"
-	else
-	TEMPLEAK="${RED}LEAKS	${NOCOLOR}"
-	LEAKFLAG="${RED}LEAKS	${NOCOLOR}"
-	fi
-fi
-rm -rf a
-rm -rf b
-rm -rf c
+  if [[ "$LEAK_AVAILABLE" -eq 1 ]]; then
+    leaks -atExit -- $ROOT/push_swap $(cat ./trace_loop/test_case_$i.txt) > a 2>c
+    cat a | grep ": 0 leaks for 0 total leaked bytes" > b
+  else
+    TEMPLEAK=""
+    LEAKFLAG="not checked\t"
+  fi
+  if [[ "$LEAK_AVAILABLE" -eq 1 ]]; then
+    if [[ -s b ]];
+    then
+      TEMPLEAK="${GREEN}NO LEAKS${NOCOLOR}"
+    else
+      if [[ -s c ]];
+      then
+        TEMPLEAK=""
+        LEAKFLAG="not checked\t"
+      else
+        TEMPLEAK="${RED}LEAKS	${NOCOLOR}"
+        LEAKFLAG="${RED}LEAKS	${NOCOLOR}"
+      fi
+    fi
+    rm -rf a
+    rm -rf b
+    rm -rf c
+  fi
 printf "$TEMPLEAK	"
 else
 printf "		"
